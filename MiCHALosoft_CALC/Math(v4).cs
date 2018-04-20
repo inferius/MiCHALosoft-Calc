@@ -166,16 +166,19 @@ namespace MiCHALosoft_CALC
                     {
                         continue;
                     }
-                    string st1 = res[i - 1].ToString().Substring(res[i - 1].ToString().Length - offset[i - 1], offset[i - 1]),
-                           st2 = res[i].ToString();
+                    string st1 = res[i].ToString().Substring(0, offset[i]),
+                           st2 = res[i - 1].ToString();
 
-                    if (st1 == String.Empty)
+                    var st1_olenght = st1.Length;
+                    UInt64 st1_ui = 0;
+
+                    if (st1_olenght > 0)
                     {
-                        st1 = "0";
+                        st1_ui = UInt64.Parse(st1);
                     }
 
-                    res[i - 1] = UInt64.Parse(res[i - 1].ToString().Substring(0, res[i - 1].ToString().Length - offset[i - 1]));
-                    res[i] = UInt64.Parse(st1) + UInt64.Parse(st2);
+                    res[i] = UInt64.Parse(res[i].ToString().Substring(st1_olenght));
+                    res[i - 1] = st1_ui + UInt64.Parse(st2);
                     
                 }
                 StringBuilder str_res = new StringBuilder();
