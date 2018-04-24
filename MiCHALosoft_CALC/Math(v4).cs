@@ -17,11 +17,12 @@ namespace MiCHALosoft_CALC
 
     public class MathNumber
     {
-        private bool _is_positive = true;
-        private bool _is_float = false;
+        private bool _isPositive = true;
+        private bool _isFloat = false;
         private List<SegmentNumber> _segments = new List<SegmentNumber>();
         private string _original = "";
         private int _float_start_index = -1;
+        private static int MaxSegmentCount = UInt64.MaxValue.ToString().Length - 4;
 
         private List<SegmentNumber> IntegerPart => _segments.Where(item => !item.AfterFloat).ToList();
         private List<SegmentNumber> FloatPart => _segments.Where(item => item.AfterFloat).ToList();
@@ -29,13 +30,13 @@ namespace MiCHALosoft_CALC
         #region Constructors
         public MathNumber(string number)
         {
-            var m = MathNumber.Parse(number);
+            var m = Parse(number);
 
-            this._is_float = m._is_float;
-            this._is_positive = m._is_positive;
-            this._segments = m._segments;
-            this._original = m._original;
-            this._float_start_index = m._float_start_index;
+            _isFloat = m._isFloat;
+            _isPositive = m._isPositive;
+            _segments = m._segments;
+            _original = m._original;
+            _float_start_index = m._float_start_index;
         }
 
         public MathNumber()
@@ -47,14 +48,8 @@ namespace MiCHALosoft_CALC
         #region Static method
         public static MathNumber Parse(string number)
         {
-            if (number == null)
-            {
-                throw new ArgumentNullException();
-            }
-
             var m = new MathNumber();
-            int max_segment_number = UInt64.MaxValue.ToString().Length - 2;
-            m._original = number;
+            m._original = number ?? throw new ArgumentNullException();
 
             number = number.Trim();
 
@@ -62,22 +57,22 @@ namespace MiCHALosoft_CALC
             {
                 throw new ArgumentException();
             }
-            m._is_positive = number[0] != '-';
+            m._isPositive = number[0] != '-';
             char[] float_separator = { '.' };
             m._float_start_index = number.IndexOf('.');
-            m._is_float = m._float_start_index != -1;
+            m._isFloat = m._float_start_index != -1;
 
             //StringBuilder new_str = new StringBuilder(number);
 
             // pokud je float je rozdelen na 2 části
-            if (!m._is_float)
+            if (!m._isFloat)
             {
 
-                var segments = MathNumber.Split(number, max_segment_number);
+                var segments = Split(number, MaxSegmentCount);
 
                 foreach (var seg in segments)
                 {
-                    m._segments.Add(new SegmentNumber(UInt64.Parse(seg), 0, m._is_positive, false));
+                    m._segments.Add(new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, false));
                 }
             }
             else
@@ -87,38 +82,43 @@ namespace MiCHALosoft_CALC
                 {
                     if (i == 0)
                     {
-                        var segments = MathNumber.Split(numbers[i], max_segment_number);
+                        var segments = Split(numbers[i], MaxSegmentCount);
                         foreach (var seg in segments)
                         {
-                            m._segments.Add(new SegmentNumber(UInt64.Parse(seg), 0, m._is_positive, false));
+                            m._segments.Add(new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, false));
                         }
                     }
                     else
                     {
                         m._float_start_index = m._segments.Count;
-                        var segments = MathNumber.Split(numbers[i], max_segment_number);
+                        var segments = Split(numbers[i], MaxSegmentCount);
                         foreach (var seg in segments)
                         {
-                            int zero_cnt = 0;
-                            for (int j = 0; j < seg.Length; j++)
-                            {
-                                if (seg[j] == '0')
-                                {
-                                    zero_cnt++;
-                                }
-                                else
-                                {
-                                    break;
-                                }
-                            }
-
-                            m._segments.Add(new SegmentNumber(UInt64.Parse(seg), zero_cnt, m._is_positive, true));
+                            m._segments.Add(new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, true));
                         }
                     }
                 }
             }
 
             return m;
+        }
+
+        private static int getPrependCount(string nun)
+        {
+            var zeroCnt = 0;
+            foreach (var t in nun)
+            {
+                if (t == '0')
+                {
+                    zeroCnt++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return zeroCnt;
         }
 
         public static IEnumerable<string> Split(string str, int chunkSize)
@@ -138,17 +138,18 @@ namespace MiCHALosoft_CALC
             var e_lng = f_lng - 1;
             var c_lng = 0;
 
-            foreach (var c in str)
+            //foreach (var c in str)
+            for (var j = str.Length - 1; j >= 0; j--)
             {
-                b.Append(c);
-                if (i++ == chunkSize)
+                b.Append(str[j]);
+                if (++i == chunkSize)
                 {
                     var charArray = b.ToString().ToCharArray();
                     Array.Reverse(charArray);
 
 
-                    //s[e_lng--] = new string(charArray);
-                    s[c_lng++] = new string(charArray);
+                    s[e_lng--] = new string(charArray);
+                    //s[c_lng++] = new string(charArray);
                     //s[c_lng++] = b.ToString();
                     b.Clear();
                     i = 0;
@@ -161,7 +162,7 @@ namespace MiCHALosoft_CALC
                 Array.Reverse(charArray);
 
 
-                s[e_lng] = new string(charArray);
+                s[0] = new string(charArray);
             }
 
             return s;
@@ -189,46 +190,75 @@ namespace MiCHALosoft_CALC
         #endregion
 
         #region Operator
-        public static MathNumber operator +(MathNumber m1, MathNumber m2)
+
+        private static StringBuilder SumSegments(List<SegmentNumber> m1IntPart, List<SegmentNumber> m2IntPart, ulong additional = 0, bool isFloatPart = false)
         {
-            if (m2._original == "0") return Parse(m1._original);
-            if (m1._original == "0") return Parse(m2._original);
 
-            MathNumber m = new MathNumber();
-
-            #region Soucet celociselne casti
-
-            var m1_int_part = m1.IntegerPart;
-            var m2_int_part = m2.IntegerPart;
-
-            MathNumber mn_buf_greater = m1_int_part.Count > m2_int_part.Count ? m1 : m2;
-            MathNumber mn_buf_less = m1_int_part.Count > m2_int_part.Count ? m2 : m1;
-
-            var mn_buf_greater_int_part = mn_buf_greater.IntegerPart;
-            var mn_buf_less_int_part = mn_buf_less.IntegerPart;
-
-            int lng = mn_buf_greater_int_part.Count;
-            int[] offset = new int[lng];
-            UInt64[] res = new UInt64[lng];
-
-            for (int i = lng - 1, c1 = m1_int_part.Count - 1, c2 = m2_int_part.Count - 1; i >= 0; i--, c1--, c2--)
+            if (isFloatPart)
             {
-                UInt64 s1 = c1 < 0 ? 0 : m1_int_part[c1].NumberPart;
-                UInt64 s2 = c2 < 0 ? 0 : m2_int_part[c2].NumberPart;
-                res[i] = s1 + s2;
-                offset[i] = res[i].ToString().Length - mn_buf_greater_int_part[i].ToString().Length;
+                var m1 = new StringBuilder(SegmentsToString(m1IntPart));
+                var m2 = new StringBuilder(SegmentsToString(m2IntPart));
+
+                if (m1IntPart.Count > 0 && m1IntPart[0].PrependZeroCount > 0)
+                {
+                    for (var i = 0; i < m1IntPart[0].PrependZeroCount; i++) m2.Append("0");
+                }
+
+                if (m2IntPart.Count > 0 && m2IntPart[0].PrependZeroCount > 0)
+                {
+                    for (var i = 0; i < m2IntPart[0].PrependZeroCount; i++) m1.Append("0");
+                }
+
+                if (m1.Length > m2.Length)
+                {
+                    var lng_f = m1.Length - m2.Length;
+                    for (var i = 0; i < lng_f; i++) m2.Append('0');
+                }
+                else
+                {
+                    var lng_f = m2.Length - m1.Length;
+                    for (var i = 0; i < lng_f; i++) m1.Append('0');
+                }
+
+                m1IntPart.Clear();
+                m1IntPart.AddRange(Split(m1.ToString(), MaxSegmentCount).Select(seg => new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), true, true)));
+
+                m2IntPart.Clear();
+                m2IntPart.AddRange(Split(m2.ToString(), MaxSegmentCount).Select(seg => new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), true, true)));
             }
 
+            var mnBufGreaterIntPart = m1IntPart.Count > m2IntPart.Count ? m1IntPart : m2IntPart;
 
-            //for (int i = lng - 1; i >= 0; i--)
-            //{
-            //    UInt64 s1 = m1_int_part.Count <= i ? 0 : m1_int_part[i].NumberPart;
-            //    UInt64 s2 = m2_int_part.Count <= i ? 0 : m2_int_part[i].NumberPart;
-            //    res[i] = s1 + s2;
-            //    offset[i] = res[i].ToString().Length - mn_buf_int_part[i].ToString().Length;
-            //}
+            int lng = mnBufGreaterIntPart.Count;
+            int[] offset = new int[lng];
+            UInt64[] res = new UInt64[lng];
+            var prepentZero = new int[lng];
 
-            for (int i = 0; i < lng; i++)
+            for (int i = lng - 1, c1 = m1IntPart.Count - 1, c2 = m2IntPart.Count - 1; i >= 0; i--, c1--, c2--)
+            {
+                UInt64 s1 = c1 < 0 ? 0 : m1IntPart[c1].NumberPart;
+                UInt64 s2 = c2 < 0 ? 0 : m2IntPart[c2].NumberPart;
+
+                //if (isFloatPart && c1 == 0 && m1IntPart[0].PrependZeroCount > 0)
+                //{
+                //    s1 = ulong.Parse(m1IntPart[0].NumberPart + "".PadLeft(m1IntPart[0].PrependZeroCount, '0'));
+                //}
+
+                //if (isFloatPart && c2 == 0 && m2IntPart[0].PrependZeroCount > 0)
+                //{
+                //    s2 = ulong.Parse(m2IntPart[0].NumberPart + "".PadLeft(m2IntPart[0].PrependZeroCount, '0'));
+                //}
+
+                res[i] = s1 + s2 + additional;
+
+
+
+                offset[i] = res[i].ToString().Length - mnBufGreaterIntPart[i].ToString().Length;
+
+                additional = 0;
+            }
+
+            for (var i = 0; i < lng; i++)
             {
                 if (i == 0)
                 {
@@ -254,31 +284,78 @@ namespace MiCHALosoft_CALC
                     st1_ui = UInt64.Parse(sb_st1_part1.ToString());
                 }
 
-                res[i] = UInt64.Parse(sb_st1_part2.ToString());
+                var s_st1_part2 = sb_st1_part2.ToString();
+                prepentZero[i] = getPrependCount(s_st1_part2);
+
+                res[i] = UInt64.Parse(s_st1_part2);
                 res[i - 1] = st1_ui + res[i - 1];
 
             }
             StringBuilder str_res = new StringBuilder();
+            var ji = 0;
             foreach (var r in res)
             {
+                for (var z = 0; z < prepentZero[ji]; z++) str_res.Append('0');
+
                 str_res.Append(r.ToString());
+                ji++;
             }
 
-            m = MathNumber.Parse(str_res.ToString());
-            #endregion
+            return str_res;
+        }
 
-            if (m1._is_float || m2._is_float)
+        public static MathNumber operator +(MathNumber m1, MathNumber m2)
+        {
+            if (m2._original == "0") return Parse(m1._original);
+            if (m1._original == "0") return Parse(m2._original);
+
+            ulong add = 0;
+
+            #region Soucet desetinne casti
+            var sb_float_part = new StringBuilder();
+
+            if (m1._isFloat && m2._isFloat)
             {
-                if (m1._is_positive && m1._is_positive)
+                if (m1._isPositive && m2._isPositive)
                 {
                     var m1_float_part = m1.FloatPart;
                     var m2_float_part = m2.FloatPart;
+
+                    var m1_float_string = SegmentsToString(m1_float_part);
+                    var m2_float_string = SegmentsToString(m2_float_part);
+
+                    var larger = m1_float_string.Length > m2_float_string.Length ? m1_float_string : m2_float_string;
+
+                    sb_float_part = SumSegments(m1_float_part.ToList(), m2_float_part.ToList(), 0, true);
+
+                    if (sb_float_part.Length > larger.Length)
+                    {
+                        add = ulong.Parse(sb_float_part.ToString(0, sb_float_part.Length - larger.Length));
+                    }
+
+                    
+
                 }
             }
+            else if (m1._isFloat || m2._isFloat)
+            {
+                if (m1._isFloat) sb_float_part.Append(SegmentsToString(m1.FloatPart));
+                if (m2._isFloat) sb_float_part.Append(SegmentsToString(m2.FloatPart));
+            }
 
+            #endregion
 
+            #region Soucet celociselne casti
+            var sb_res = SumSegments(m1.IntegerPart, m2.IntegerPart, add);
+            #endregion
 
-            return m;
+            if (sb_float_part.Length > 0)
+            {
+                sb_res.Append(".");
+                sb_res.Append(sb_float_part);
+            }
+
+            return Parse(sb_res.ToString());
         }
         #endregion
 
@@ -286,29 +363,55 @@ namespace MiCHALosoft_CALC
         public override string ToString()
         {
             StringBuilder str = new StringBuilder();
-            bool is_point_added = false;
+            bool isPointAdded = false;
 
             foreach (var s in _segments)
             {
-                if (s.AfterFloat)
+                if (!isPointAdded && s.AfterFloat)
                 {
-                    string str_flt = s.NumberPart.ToString();
-                    str_flt = str_flt.PadLeft(str_flt.Length + s.PrependZeroCount, '0');
+                    isPointAdded = true;
+                    str.Append(".");
+                }
 
-                    if (is_point_added)
-                    {
-                        str.AppendFormat(str_flt);
-                        is_point_added = true;
-                    }
-                    else
-                    {
-                        str.AppendFormat(".{0}", str_flt);
-                    }
-                }
-                else
-                {
-                    str.Append(s);
-                }
+                
+
+                str.Append(s);
+            }
+
+            return str.ToString();
+        }
+
+        private string ToFloatPartString()
+        {
+            StringBuilder str = new StringBuilder();
+
+            foreach (var s in FloatPart)
+            {
+                str.Append(s);
+            }
+
+            return str.ToString();
+        }
+
+        private string ToIntPartString()
+        {
+            StringBuilder str = new StringBuilder();
+
+            foreach (var s in IntegerPart)
+            {
+                str.Append(s);
+            }
+
+            return str.ToString();
+        }
+
+        private static string SegmentsToString(IEnumerable<SegmentNumber> segments)
+        {
+            StringBuilder str = new StringBuilder();
+
+            foreach (var s in segments)
+            {
+                str.Append(s);
             }
 
             return str.ToString();
@@ -328,43 +431,23 @@ namespace MiCHALosoft_CALC
 
     public class SegmentNumber
     {
-        UInt64 _number_part = 0;
-        bool _is_positive = true; // oznacuje zda je segment kladny nebo zaporny
-        bool _after_float = false; // true - znamea, ze se nachazi az za desetinou čarkou
-        int _prepend_zero_count = 0; // oznacuje pocet nul před číslem, tedy když bude _prepend_number_count=5 a _number_pard = 352 pak vysledny segment bude 00000352
-
         #region Properties
-        public UInt64 NumberPart
-        {
-            set { this._number_part = value; }
-            get { return this._number_part; }
-        }
+        public UInt64 NumberPart { set; get; } = 0;
 
-        public int PrependZeroCount
-        {
-            set { this._prepend_zero_count = value; }
-            get { return this._prepend_zero_count; }
-        }
+        public int PrependZeroCount { set; get; } = 0;
 
-        public bool IsPositive
-        {
-            set { this._is_positive = value; }
-            get { return this._is_positive; }
-        }
+        public bool IsPositive { set; get; } = true;
 
-        public bool AfterFloat
-        {
-            set { this._after_float = value; }
-            get { return this._after_float; }
-        }
+        public bool AfterFloat { set; get; } = false;
+
         #endregion
 
         public SegmentNumber(UInt64 numberPart = 0, int prependZeroCount = 0, bool isPositive = true, bool afterFloat = false)
         {
-            this._is_positive = isPositive;
-            this._number_part = numberPart;
-            this._prepend_zero_count = prependZeroCount;
-            this.AfterFloat = afterFloat;
+            IsPositive = isPositive;
+            NumberPart = numberPart;
+            PrependZeroCount = prependZeroCount;
+            AfterFloat = afterFloat;
         }
 
         public static SegmentNumber Parse(string number)
@@ -376,13 +459,16 @@ namespace MiCHALosoft_CALC
 
         public override string ToString()
         {
-            string str_flt = this.NumberPart.ToString();
-            if (this.AfterFloat)
+            var strFlt = new StringBuilder();
+
+            if (PrependZeroCount > 0)
             {
-                str_flt = str_flt.PadLeft(str_flt.Length + this.PrependZeroCount, '0');
+                for (var i = 0; i < PrependZeroCount; i++) strFlt.Append('0');
             }
 
-            return str_flt;
+            strFlt.Append(NumberPart.ToString());
+
+            return strFlt.ToString();
         }
     }
 }
