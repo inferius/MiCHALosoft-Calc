@@ -23,6 +23,9 @@ namespace MiCHALosoft_CALC
         private string _original = "";
         private int _float_start_index = -1;
 
+        private List<SegmentNumber> IntegerPart => _segments.Where(item => !item.AfterFloat).ToList();
+        private List<SegmentNumber> FloatPart => _segments.Where(item => item.AfterFloat).ToList();
+
         #region Constructors
         public MathNumber(string number)
         {
@@ -59,17 +62,17 @@ namespace MiCHALosoft_CALC
             {
                 throw new ArgumentException();
             }
-            m._is_positive = number[0] == '-' ? false : true;
-            char [] float_separator = { '.' };
+            m._is_positive = number[0] != '-';
+            char[] float_separator = { '.' };
             m._float_start_index = number.IndexOf('.');
-            m._is_float = m._float_start_index == -1 ? false : true;
+            m._is_float = m._float_start_index != -1;
 
             //StringBuilder new_str = new StringBuilder(number);
 
             // pokud je float je rozdelen na 2 části
             if (!m._is_float)
             {
-                //if (number 
+
                 var segments = MathNumber.Split(number, max_segment_number);
 
                 foreach (var seg in segments)
@@ -114,86 +117,165 @@ namespace MiCHALosoft_CALC
                     }
                 }
             }
-            
+
             return m;
         }
 
-        //public static IEnumerable<string> Split(string str, int chunkSize)
-        //{
-        //    return Enumerable.Range(0, str.Length / chunkSize)
-        //        .Select(i => str.Substring(i * chunkSize, chunkSize));
-        //}
-
-        public static IEnumerable<string> Split(string s, int length)
+        public static IEnumerable<string> Split(string str, int chunkSize)
         {
-            var buf = new char[length];
-            using (var rdr = new System.IO.StringReader(s))
+            var lng_a = str.Length / chunkSize;
+            var lng_m = str.Length % chunkSize;
+            int f_lng = 0;
+
+            if (lng_a <= 0) return new string[] { str };
+
+            f_lng = (int)lng_a;
+            if (lng_m != 0) f_lng++;
+
+            var s = new string[f_lng];
+            var b = new StringBuilder();
+            var i = 0;
+            var e_lng = f_lng - 1;
+            var c_lng = 0;
+
+            foreach (var c in str)
             {
-                int l;
-                l = rdr.ReadBlock(buf, 0, length);
-                while (l > 0)
+                b.Append(c);
+                if (i++ == chunkSize)
                 {
-                    yield return (new string(buf, 0, l));
-                    l = rdr.ReadBlock(buf, 0, length);
+                    var charArray = b.ToString().ToCharArray();
+                    Array.Reverse(charArray);
+
+
+                    //s[e_lng--] = new string(charArray);
+                    s[c_lng++] = new string(charArray);
+                    //s[c_lng++] = b.ToString();
+                    b.Clear();
+                    i = 0;
                 }
             }
+
+            if (b.Length > 0)
+            {
+                var charArray = b.ToString().ToCharArray();
+                Array.Reverse(charArray);
+
+
+                s[e_lng] = new string(charArray);
+            }
+
+            return s;
+
         }
+
+        //public static IEnumerable<string> Split(string s, int length)
+        //{
+        //    var buf = new char[length];
+        //    using (var rdr = new System.IO.StringReader(s))
+        //    {
+        //        int l;
+        //        l = rdr.ReadBlock(buf, 0, length);
+        //        while (l > 0)
+        //        {
+        //            yield return (new string(buf, 0, l));
+        //            l = rdr.ReadBlock(buf, 0, length);
+        //        }
+        //    }
+        //}
+        #endregion
+
+        #region Public Methods
+
         #endregion
 
         #region Operator
         public static MathNumber operator +(MathNumber m1, MathNumber m2)
         {
+            if (m2._original == "0") return Parse(m1._original);
+            if (m1._original == "0") return Parse(m2._original);
+
             MathNumber m = new MathNumber();
 
-            if (!m1._is_float && !m2._is_float)
+            #region Soucet celociselne casti
+
+            var m1_int_part = m1.IntegerPart;
+            var m2_int_part = m2.IntegerPart;
+
+            MathNumber mn_buf_greater = m1_int_part.Count > m2_int_part.Count ? m1 : m2;
+            MathNumber mn_buf_less = m1_int_part.Count > m2_int_part.Count ? m2 : m1;
+
+            var mn_buf_greater_int_part = mn_buf_greater.IntegerPart;
+            var mn_buf_less_int_part = mn_buf_less.IntegerPart;
+
+            int lng = mn_buf_greater_int_part.Count;
+            int[] offset = new int[lng];
+            UInt64[] res = new UInt64[lng];
+
+            for (int i = lng - 1, c1 = m1_int_part.Count - 1, c2 = m2_int_part.Count - 1; i >= 0; i--, c1--, c2--)
             {
-                MathNumber mn_buf = m1._segments.Count > m2._segments.Count ? m1 : m2;
-                int lng = mn_buf._segments.Count;
-                int[] offset = new int[lng];
-                UInt64[] res = new UInt64[lng];
-
-                for (int i = 0; i < lng; i++)
-                {
-                    UInt64 s1 = m1._segments.Count < i ? 0 : m1._segments[i].NumberPart;
-                    UInt64 s2 = m2._segments.Count < i ? 0 : m2._segments[i].NumberPart;
-                    res[i] = s1 + s2;
-                    offset[i] = res[i].ToString().Length - mn_buf._segments[i].ToString().Length;
-                }
-
-                for (int i = 0; i < lng; i++)
-                {
-                    if (i == 0)
-                    {
-                        continue;
-                    }
-                    string st1 = res[i].ToString().Substring(0, offset[i]),
-                           st2 = res[i - 1].ToString();
-
-                    var st1_olenght = st1.Length;
-                    UInt64 st1_ui = 0;
-
-                    if (st1_olenght > 0)
-                    {
-                        st1_ui = UInt64.Parse(st1);
-                    }
-
-                    res[i] = UInt64.Parse(res[i].ToString().Substring(st1_olenght));
-                    res[i - 1] = st1_ui + UInt64.Parse(st2);
-                    
-                }
-                StringBuilder str_res = new StringBuilder();
-                foreach (var r in res)
-                {
-                    str_res.Append(r.ToString());
-                }
-
-                m = MathNumber.Parse(str_res.ToString());
-                
+                UInt64 s1 = c1 < 0 ? 0 : m1_int_part[c1].NumberPart;
+                UInt64 s2 = c2 < 0 ? 0 : m2_int_part[c2].NumberPart;
+                res[i] = s1 + s2;
+                offset[i] = res[i].ToString().Length - mn_buf_greater_int_part[i].ToString().Length;
             }
-            else if ((!m1._is_float && m2._is_float) || (m1._is_float && !m2._is_float))
+
+
+            //for (int i = lng - 1; i >= 0; i--)
+            //{
+            //    UInt64 s1 = m1_int_part.Count <= i ? 0 : m1_int_part[i].NumberPart;
+            //    UInt64 s2 = m2_int_part.Count <= i ? 0 : m2_int_part[i].NumberPart;
+            //    res[i] = s1 + s2;
+            //    offset[i] = res[i].ToString().Length - mn_buf_int_part[i].ToString().Length;
+            //}
+
+            for (int i = 0; i < lng; i++)
             {
+                if (i == 0)
+                {
+                    continue;
+                }
+                string st1 = res[i].ToString();
+
+                var cur_offset = offset[i];
+
+                var sb_st1_part1 = new StringBuilder();
+                var sb_st1_part2 = new StringBuilder();
+
+                for (var j = 0; j < st1.Length; j++)
+                {
+                    if (j < cur_offset) sb_st1_part1.Append(st1[j]);
+                    else sb_st1_part2.Append(st1[j]);
+                }
+
+                UInt64 st1_ui = 0;
+
+                if (cur_offset > 0)
+                {
+                    st1_ui = UInt64.Parse(sb_st1_part1.ToString());
+                }
+
+                res[i] = UInt64.Parse(sb_st1_part2.ToString());
+                res[i - 1] = st1_ui + res[i - 1];
 
             }
+            StringBuilder str_res = new StringBuilder();
+            foreach (var r in res)
+            {
+                str_res.Append(r.ToString());
+            }
+
+            m = MathNumber.Parse(str_res.ToString());
+            #endregion
+
+            if (m1._is_float || m2._is_float)
+            {
+                if (m1._is_positive && m1._is_positive)
+                {
+                    var m1_float_part = m1.FloatPart;
+                    var m2_float_part = m2.FloatPart;
+                }
+            }
+
 
 
             return m;

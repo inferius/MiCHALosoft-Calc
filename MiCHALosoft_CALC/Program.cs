@@ -188,8 +188,10 @@ namespace MiCHALosoft_CALC
             //int pocet_kroku = 50000;
             int pocet_kroku = 10000;
 
-            var num1 = "446744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161.2";
-            var num2 = "446744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161.2";
+            var num1 = "446744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161";
+            var num2 =  "46744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161";
+
+            //num2 = "15";
 
 
             double seconds4 = testPefrormance(() =>
@@ -233,15 +235,15 @@ namespace MiCHALosoft_CALC
             //currentProcess.Refresh();
             //double seconds9 = (currentProcess.TotalProcessorTime - start9).TotalMilliseconds;
 
-            double seconds9 = 0;
+            //double seconds9 = 0;
 
-            //double seconds9 = testPefrormance(() =>
-            //{
-            //    var m1 = BigInteger.Parse(num1);
-            //    var m2 = BigInteger.Parse(num2);
+            double seconds9 = testPefrormance(() =>
+            {
+                var m1 = BigInteger.Parse(num1);
+                var m2 = BigInteger.Parse(num2);
 
-            //    return () => res[5] = (m1 + m2).ToString();
-            //});
+                return () => res[5] = (m1 + m2).ToString();
+            });
 
             Console.WriteLine("Meření času(soucin)\nMathV1 : {3} ms\nMathV2 : {0} ms. with convert\nMathV2 : {1} ms\nMathV4 : {2} ms\nMathV4 : {4} ms, MathNumber Class\nBigInt : {5} ms\n", seconds5, seconds6, seconds7, seconds4, seconds8, seconds9);
             for (int i = 0; i < res.Length; i++)
@@ -274,7 +276,7 @@ namespace MiCHALosoft_CALC
             
         }
 
-        public static double testPefrormance(Func<Action> prepareAction, int stepCount = 30000, Process proc = null)
+        public static double testPefrormance(Func<Action> prepareAction, int stepCount = 1, Process proc = null)
         {
             var curProc = proc ?? _currentProcess;
             curProc.Refresh();
