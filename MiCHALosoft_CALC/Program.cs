@@ -120,16 +120,6 @@ namespace MiCHALosoft_CALC
 
 
 
-
-
-
-
-
-
-
-
-
-
             /*  //debugovaci merici proces
             int pocet_kroku = 3000;
             currentProcess.Refresh();
@@ -190,6 +180,9 @@ namespace MiCHALosoft_CALC
 
             var num1 = "446744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161.001200003003021000000654";
             var num2 = "46744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161.1200003003021000000654";
+
+            //var num1 = "446744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161";
+            //var num2 = "46744073709551614467440737095516144674407370955161446744073709551614467440737095516144674407370955161";
 
             //num2 = "15";
 
@@ -276,7 +269,7 @@ namespace MiCHALosoft_CALC
             
         }
 
-        public static double testPefrormance(Func<Action> prepareAction, int stepCount = 10000, Process proc = null)
+        public static double testPefrormance(Func<Action> prepareAction, int stepCount = 30000, Process proc = null)
         {
             var curProc = proc ?? _currentProcess;
             curProc.Refresh();

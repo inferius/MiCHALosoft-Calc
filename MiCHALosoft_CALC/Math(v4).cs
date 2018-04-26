@@ -191,6 +191,11 @@ namespace MiCHALosoft_CALC
 
         #region Operator
 
+        private static void AppendZero(StringBuilder sb, int count)
+        {
+            for (var i = 0; i < count; i++) sb.Append("0");
+        }
+
         private static StringBuilder SumSegments(List<SegmentNumber> m1IntPart, List<SegmentNumber> m2IntPart, ulong additional = 0, bool isFloatPart = false)
         {
 
@@ -201,23 +206,21 @@ namespace MiCHALosoft_CALC
 
                 if (m1IntPart.Count > 0 && m1IntPart[0].PrependZeroCount > 0)
                 {
-                    for (var i = 0; i < m1IntPart[0].PrependZeroCount; i++) m2.Append("0");
+                    AppendZero(m2, m1IntPart[0].PrependZeroCount);
                 }
 
                 if (m2IntPart.Count > 0 && m2IntPart[0].PrependZeroCount > 0)
                 {
-                    for (var i = 0; i < m2IntPart[0].PrependZeroCount; i++) m1.Append("0");
+                    AppendZero(m1, m2IntPart[0].PrependZeroCount);
                 }
 
                 if (m1.Length > m2.Length)
                 {
-                    var lng_f = m1.Length - m2.Length;
-                    for (var i = 0; i < lng_f; i++) m2.Append('0');
+                    AppendZero(m2, m1.Length - m2.Length);
                 }
                 else
                 {
-                    var lng_f = m2.Length - m1.Length;
-                    for (var i = 0; i < lng_f; i++) m1.Append('0');
+                    AppendZero(m1, m2.Length - m1.Length);
                 }
 
                 m1IntPart.Clear();
@@ -239,20 +242,7 @@ namespace MiCHALosoft_CALC
                 UInt64 s1 = c1 < 0 ? 0 : m1IntPart[c1].NumberPart;
                 UInt64 s2 = c2 < 0 ? 0 : m2IntPart[c2].NumberPart;
 
-                //if (isFloatPart && c1 == 0 && m1IntPart[0].PrependZeroCount > 0)
-                //{
-                //    s1 = ulong.Parse(m1IntPart[0].NumberPart + "".PadLeft(m1IntPart[0].PrependZeroCount, '0'));
-                //}
-
-                //if (isFloatPart && c2 == 0 && m2IntPart[0].PrependZeroCount > 0)
-                //{
-                //    s2 = ulong.Parse(m2IntPart[0].NumberPart + "".PadLeft(m2IntPart[0].PrependZeroCount, '0'));
-                //}
-
                 res[i] = s1 + s2 + additional;
-
-
-
                 offset[i] = res[i].ToString().Length - mnBufGreaterIntPart[i].ToString().Length;
 
                 additional = 0;
