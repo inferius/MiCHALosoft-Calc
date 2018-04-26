@@ -67,13 +67,7 @@ namespace MiCHALosoft_CALC
             // pokud je float je rozdelen na 2 části
             if (!m._isFloat)
             {
-
-                var segments = Split(number, MaxSegmentCount);
-
-                foreach (var seg in segments)
-                {
-                    m._segments.Add(new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, false));
-                }
+                m._segments.AddRange(Split(number, MaxSegmentCount).Select(seg => new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, false)));
             }
             else
             {
@@ -82,20 +76,12 @@ namespace MiCHALosoft_CALC
                 {
                     if (i == 0)
                     {
-                        var segments = Split(numbers[i], MaxSegmentCount);
-                        foreach (var seg in segments)
-                        {
-                            m._segments.Add(new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, false));
-                        }
+                        m._segments.AddRange(Split(numbers[i], MaxSegmentCount).Select(seg => new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, false)));
                     }
                     else
                     {
                         m._float_start_index = m._segments.Count;
-                        var segments = Split(numbers[i], MaxSegmentCount);
-                        foreach (var seg in segments)
-                        {
-                            m._segments.Add(new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, true));
-                        }
+                        m._segments.AddRange(Split(numbers[i], MaxSegmentCount).Select(seg => new SegmentNumber(UInt64.Parse(seg), getPrependCount(seg), m._isPositive, true)));
                     }
                 }
             }
